@@ -1,4 +1,5 @@
 pub mod bootrom;
+pub mod cpu;
 mod hram;
-mod wram;
 mod mem;
+mod wram;

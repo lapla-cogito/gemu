@@ -5,10 +5,7 @@ pub struct Bootrom {
 
 impl Bootrom {
     pub fn new(rom: Box<[u8]>) -> Self {
-        Self { 
-            rom,
-            active:true,
-         }
+        Self { rom, active: true }
     }
 
     pub fn active(&self) -> bool {
@@ -20,6 +17,6 @@ impl Bootrom {
     }
 
     pub fn write(&mut self, _addr: u16, data: u8) {
-        self.active&=data==0;
+        self.active &= data == 0;
     }
 }

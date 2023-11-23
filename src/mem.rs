@@ -1,8 +1,4 @@
-use crate::{
-    bootrom::Bootrom,
-    hram::Hram,
-    wram::Wram,
-};
+use crate::{bootrom::Bootrom, hram::Hram, wram::Wram};
 
 pub struct Memory {
     bootrom: Bootrom,
@@ -10,7 +6,7 @@ pub struct Memory {
     hram: Hram,
 }
 
-impl Memory{
+impl Memory {
     pub fn new(bootrom: Bootrom) -> Self {
         Self {
             bootrom,
@@ -21,11 +17,13 @@ impl Memory{
 
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
-            0x0000..=0x00ff => if self.bootrom.active() {
-                self.bootrom.read(addr)
-            } else {
-                0xff
-            },
+            0x0000..=0x00ff => {
+                if self.bootrom.active() {
+                    self.bootrom.read(addr)
+                } else {
+                    0xff
+                }
+            }
             0x0c00..=0xfdff => self.wram.read(addr),
             0xff80..=0xfffe => self.hram.read(addr),
             _ => panic!("Invalid read address: {:#06x}", addr),
