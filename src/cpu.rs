@@ -1,5 +1,6 @@
 use crate::{cpu::reg::Registers, mem::Memory};
 
+mod operand;
 mod reg;
 
 #[derive(Default)]
