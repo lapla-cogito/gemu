@@ -1,5 +1,6 @@
 use crate::{cpu::reg::Registers, mem::Memory};
 
+mod instructions;
 mod operand;
 mod reg;
 
