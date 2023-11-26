@@ -5,10 +5,14 @@ use crate::{
         operand::{Cond, Imm16, Imm8, Reg16, IO16, IO8},
         Cpu,
     },
-    mem::{self, Memory},
+    mem::Memory,
 };
 
 impl Cpu {
+    pub fn nop(&mut self, mem: &mut Memory) {
+        self.fetch(mem);
+    }
+
     pub fn ld<D: Copy, S: Copy>(&mut self, mem: &mut Memory, dst: D, src: S)
     where
         Self: IO8<D> + IO8<S>,
@@ -209,12 +213,12 @@ impl Cpu {
         }
     }
 
-    pub fn bit<S: Copy>(&mut self, mem: &mut Memory, src: S, bit: u8)
+    pub fn bit<S: Copy>(&mut self, mem: &mut Memory, bit: u8, src: S)
     where
         Self: IO8<S>,
     {
         if let Some(mut v) = self.read8(mem, src) {
-            v &= (1 << bit);
+            v &= 1 << bit;
             self.regs.set_zf(v == 0);
             self.regs.set_nf(false);
             self.regs.set_hf(true);
@@ -249,26 +253,23 @@ impl Cpu {
         }
     }
 
-    pub fn push(&mut self, mem: &mut Memory, src: Reg16) -> Option<()> {
+    pub fn push(&mut self, mem: &mut Memory, src: Reg16) {
         static STEP: AtomicU16 = AtomicU16::new(0);
-        static VAL16: AtomicU16 = AtomicU16::new(0);
+        static VALUE16: AtomicU16 = AtomicU16::new(0);
         match STEP.load(Relaxed) {
             0 => {
-                VAL16.store(self.read16(mem, src).unwrap(), Relaxed);
+                VALUE16.store(self.read16(mem, src).unwrap(), Relaxed);
                 STEP.store(1, Relaxed);
-                None
             }
             1 => {
-                if self.push16(mem, VAL16.load(Relaxed)).is_some() {
+                if self.push16(mem, VALUE16.load(Relaxed)).is_some() {
                     STEP.store(2, Relaxed);
                     self.fetch(mem);
                 }
-                None
             }
             2 => {
                 STEP.store(0, Relaxed);
                 self.fetch(mem);
-                None
             }
             _ => unreachable!(),
         }
@@ -307,70 +308,110 @@ impl Cpu {
         }
     }
 
-    pub fn jr(&mut self,mem:&mut Memory){
+    pub fn jp(&mut self, mem: &mut Memory) {
         static STEP: AtomicU16 = AtomicU16::new(0);
         match STEP.load(Relaxed) {
-            0=>{
-                if let Some(v)=self.read8(mem,Imm8){
-                    self.regs.pc=self.regs.pc.wrapping_add(v as i8 as u16);
-                    STEP.store(1,Relaxed)
+            0 => {
+                if let Some(v) = self.read16(mem, Imm16) {
+                    self.regs.pc = v;
+                    STEP.store(1, Relaxed)
                 }
             }
-            1=>{
-                STEP.store(0,Relaxed);
+            1 => {
+                STEP.store(0, Relaxed);
                 self.fetch(mem);
             }
             _ => unreachable!(),
         }
     }
 
-    fn cond(&self,cond:Cond)->bool{
-        match cond{
-            Cond::NZ=>!self.regs.zf(),
-            Cond::Z=>self.regs.zf(),
-            Cond::NC=>!self.regs.cf(),
-            Cond::C=>self.regs.cf(),
+    pub fn jr(&mut self, mem: &mut Memory) {
+        static STEP: AtomicU16 = AtomicU16::new(0);
+        match STEP.load(Relaxed) {
+            0 => {
+                if let Some(v) = self.read8(mem, Imm8) {
+                    self.regs.pc = self.regs.pc.wrapping_add(v as i8 as u16);
+                    STEP.store(1, Relaxed)
+                }
+            }
+            1 => {
+                STEP.store(0, Relaxed);
+                self.fetch(mem);
+            }
+            _ => unreachable!(),
         }
     }
 
-    pub fn jr_c(&mut self,mem:&mut Memory,cond:Cond){
+    pub fn res<S: Copy>(&mut self, mem: &mut Memory, bit: usize, src: S)
+    where
+        Self: IO8<S>,
+    {
         static STEP: AtomicU16 = AtomicU16::new(0);
-        match STEP.load(Relaxed){
-            0=>{
-                if let Some(v)=self.read8(mem,Imm8){
-                    STEP.store(1,Relaxed);
-                    if self.cond(cond){
-                        self.regs.pc=self.regs.pc.wrapping_add(v as i8 as u16);
+        static VALUE8: AtomicU8 = AtomicU8::new(0);
+        match STEP.load(Relaxed) {
+            0 => {
+                if let Some(v) = self.read8(mem, src) {
+                    VALUE8.store(v & !(1 << bit), Relaxed);
+                    STEP.store(1, Relaxed);
+                }
+            }
+            1 => {
+                if self.write8(mem, src, VALUE8.load(Relaxed)).is_some() {
+                    STEP.store(0, Relaxed);
+                    self.fetch(mem);
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn cond(&self, cond: Cond) -> bool {
+        match cond {
+            Cond::NZ => !self.regs.zf(),
+            Cond::Z => self.regs.zf(),
+            Cond::NC => !self.regs.cf(),
+            Cond::C => self.regs.cf(),
+        }
+    }
+
+    pub fn jr_c(&mut self, mem: &mut Memory, cond: Cond) {
+        static STEP: AtomicU16 = AtomicU16::new(0);
+        match STEP.load(Relaxed) {
+            0 => {
+                if let Some(v) = self.read8(mem, Imm8) {
+                    STEP.store(1, Relaxed);
+                    if self.cond(cond) {
+                        self.regs.pc = self.regs.pc.wrapping_add(v as i8 as u16);
                         return;
                     }
                 }
             }
-            1=>{
-                STEP.store(0,Relaxed);
+            1 => {
+                STEP.store(0, Relaxed);
                 self.fetch(mem);
             }
-            _=>unreachable!(),
+            _ => unreachable!(),
         }
     }
 
-    pub fn call(&mut self,mem:&mut Memory){
+    pub fn call(&mut self, mem: &mut Memory) {
         static STEP: AtomicU16 = AtomicU16::new(0);
         static VALUE16: AtomicU16 = AtomicU16::new(0);
-        match STEP.load(Relaxed){
-            0=>{
-                if let Some(v)=self.read16(mem,Imm16){
-                    VALUE16.store(v,Relaxed);
-                    STEP.store(1,Relaxed);
+        match STEP.load(Relaxed) {
+            0 => {
+                if let Some(v) = self.read16(mem, Imm16) {
+                    VALUE16.store(v, Relaxed);
+                    STEP.store(1, Relaxed);
                 }
             }
-            1=>{
-                if self.push16(mem,self.regs.pc).is_some(){
-                    self.regs.pc=VALUE16.load(Relaxed);
-                    STEP.store(0,Relaxed);
+            1 => {
+                if self.push16(mem, self.regs.pc).is_some() {
+                    self.regs.pc = VALUE16.load(Relaxed);
+                    STEP.store(0, Relaxed);
                     self.fetch(mem);
                 }
             }
-            _=>unreachable!(),
+            _ => unreachable!(),
         }
     }
 
@@ -378,12 +419,12 @@ impl Cpu {
         static STEP: AtomicU16 = AtomicU16::new(0);
         match STEP.load(Relaxed) {
             0 => {
-                if let Some(v)=self.pop16(mem){
-                    self.regs.pc=v;
-                    return STEP.store(1, Relaxed);
+                if let Some(v) = self.pop16(mem) {
+                    self.regs.pc = v;
+                    STEP.store(1, Relaxed);
                 }
             }
-            1=>{
+            1 => {
                 STEP.store(0, Relaxed);
                 self.fetch(mem);
             }

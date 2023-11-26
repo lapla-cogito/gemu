@@ -263,7 +263,10 @@ impl IO8<Indirect> for Cpu {
                 STEP.store(1, Relaxed);
                 None
             }
-            1 => Some(STEP.store(0, Relaxed)),
+            1 => {
+                Some(STEP.store(0, Relaxed));
+                Some(())
+            }
             _ => {
                 unreachable!()
             }
@@ -331,14 +334,17 @@ impl IO8<Direct8> for Cpu {
                     VALUE16.store(u16::from_le_bytes([VALUE8.load(Relaxed), hi]), Relaxed);
                     STEP.store(2, Relaxed);
                 }
-                None
+                Some(())
             }
             2 => {
                 mem.write(VALUE16.load(Relaxed), val);
                 STEP.store(3, Relaxed);
-                None
+                Some(())
             }
-            3 => Some(STEP.store(0, Relaxed)),
+            3 => {
+                Some(STEP.store(0, Relaxed));
+                Some(())
+            }
             _ => {
                 unreachable!()
             }
@@ -361,26 +367,29 @@ impl IO16<Direct16> for Cpu {
                     VALUE8.store(lo, Relaxed);
                     STEP.store(1, Relaxed);
                 }
-                None
+                Some(())
             }
             1 => {
                 if let Some(hi) = self.read8(mem, Imm8) {
                     VALUE16.store(u16::from_le_bytes([VALUE8.load(Relaxed), hi]), Relaxed);
                     STEP.store(2, Relaxed);
                 }
-                None
+                Some(())
             }
             2 => {
                 mem.write(VALUE16.load(Relaxed), val as u8);
                 STEP.store(3, Relaxed);
-                None
+                Some(())
             }
             3 => {
                 mem.write(VALUE16.load(Relaxed).wrapping_add(1), (val >> 8) as u8);
                 Some(STEP.store(4, Relaxed));
-                None
+                Some(())
             }
-            4 => Some(STEP.store(0, Relaxed)),
+            4 => {
+                Some(STEP.store(0, Relaxed));
+                Some(())
+            }
             _ => {
                 unreachable!()
             }
