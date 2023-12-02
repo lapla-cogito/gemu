@@ -139,7 +139,7 @@ impl Ppu {
     pub fn pixel_buffer(&self) -> Box<[u8]> {
         self.buffer
             .iter()
-            .flat_map(|&e| iter::repeat(e.into()).take(3))
+            .flat_map(|&e| iter::repeat(e).take(3))
             .collect::<Box<[u8]>>()
     }
 
@@ -154,7 +154,7 @@ impl Ppu {
             let tile_ind =
                 self.get_tile_idx_from_tile_map(self.lcdc & BG_TILE_MAP_SELECT > 0, y >> 3, x >> 3);
 
-            let pixel = self.get_pixel_from_tile(tile_ind as usize, y & 7, x & 7);
+            let pixel = self.get_pixel_from_tile(tile_ind, y & 7, x & 7);
 
             self.buffer[i + (self.ly as usize) * LCD_WIDTH] =
                 match (self.bgp >> (pixel << 1)) & 0b11 {

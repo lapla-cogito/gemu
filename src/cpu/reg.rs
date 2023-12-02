@@ -49,14 +49,6 @@ impl Registers {
         (self.f & 0b10000000) > 0
     }
 
-    pub fn nf(&self) -> bool {
-        (self.f & 0b01000000) > 0
-    }
-
-    pub fn hf(&self) -> bool {
-        (self.f & 0b00100000) > 0
-    }
-
     pub fn cf(&self) -> bool {
         (self.f & 0b00010000) > 0
     }
