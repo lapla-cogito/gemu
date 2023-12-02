@@ -33,7 +33,8 @@ impl Cpu {
     where
         Self: IO8<D> + IO8<S>,
     {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read8(mem,src) {
                 VALUE8.store(v, Relaxed);
                 go!(1);
@@ -52,7 +53,8 @@ impl Cpu {
     where
         Self: IO16<D> + IO16<S>,
     {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read16(mem, src) {
                 VALUE16.store(v, Relaxed);
                 go!(1);
@@ -71,7 +73,8 @@ impl Cpu {
     where
         Self: IO8<S>,
     {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read8(mem, src) {
                 VALUE8.store(v & !(1 << bit), Relaxed);
                 go!(1);
@@ -84,7 +87,8 @@ impl Cpu {
     }
 
     pub fn jp(&mut self, mem: &Memory) {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read16(mem, Imm16) {
                 self.regs.pc = v;
                 return go!(1);
@@ -114,7 +118,8 @@ impl Cpu {
     where
         Self: IO8<S>,
     {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read8(mem, src) {
                 let res = v.wrapping_add(1);
                 self.regs.set_zf(res == 0);
@@ -134,7 +139,8 @@ impl Cpu {
     where
         Self: IO16<S>,
     {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read16(mem, src) {
                 VALUE16.store(v.wrapping_add(1), Relaxed);
                 go!(1);
@@ -153,7 +159,8 @@ impl Cpu {
     where
         Self: IO8<S>,
     {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read8(mem, src) {
                 let result = v.wrapping_sub(1);
                 self.regs.set_zf(result == 0);
@@ -173,7 +180,8 @@ impl Cpu {
     where
         Self: IO16<S>,
     {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read16(mem, src) {
                 VALUE16.store(v.wrapping_sub(1), Relaxed);
                 go!(1);
@@ -192,7 +200,8 @@ impl Cpu {
     where
         Self: IO8<S>,
     {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read8(mem, src) {
                 let res = (v << 1) | self.regs.cf() as u8;
                 self.regs.set_zf(res == 0);
@@ -223,7 +232,8 @@ impl Cpu {
     }
 
     pub fn push16(&mut self, mem: &mut Memory, val: u16) -> Option<()> {
-        step!(None, {
+        step!(
+            None, {
             0: {
                 go!(1);
                 return None;
@@ -247,7 +257,8 @@ impl Cpu {
     }
 
     pub fn push(&mut self, mem: &mut Memory, src: Reg16) {
-        step!((), {
+        step!(
+            (), {
             0: {
                 VALUE16.store(self.read16(mem, src).unwrap(), Relaxed);
                 go!(1);
@@ -263,7 +274,8 @@ impl Cpu {
     }
 
     pub fn pop16(&mut self, mem: &Memory) -> Option<u16> {
-        step!(None, {
+        step!(
+            None, {
             0: {
                 VALUE8.store(mem.read(self.regs.sp), Relaxed);
                 self.regs.sp = self.regs.sp.wrapping_add(1);
@@ -292,7 +304,8 @@ impl Cpu {
     }
 
     pub fn jr(&mut self, mem: &Memory) {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read8(mem, Imm8) {
                 self.regs.pc = self.regs.pc.wrapping_add(v as i8 as u16);
                 return go!(1);
@@ -314,7 +327,8 @@ impl Cpu {
     }
 
     pub fn jr_c(&mut self, mem: &Memory, c: Cond) {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read8(mem, Imm8) {
                 go!(1);
                 if self.cond(c) {
@@ -330,7 +344,8 @@ impl Cpu {
     }
 
     pub fn call(&mut self, mem: &mut Memory) {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.read16(mem, Imm16) {
                 VALUE16.store(v, Relaxed);
                 go!(1);
@@ -344,12 +359,54 @@ impl Cpu {
     }
 
     pub fn ret(&mut self, mem: &Memory) {
-        step!((), {
+        step!(
+            (), {
             0: if let Some(v) = self.pop16(mem) {
                 self.regs.pc = v;
                 go!(1);
             },
             1: {
+                go!(0);
+                self.fetch(mem);
+            },
+        });
+    }
+
+    pub fn reti(&mut self, mem: &Memory) {
+        step!({
+            (),{
+                0: if let Some(v) = self.pop16(mem) {
+                    self.regs.pc = v;
+                    go!(1);
+                },
+                1: {
+                    self.interrupts.ime = true;
+                    go!(0);
+                    self.fetch(mem);
+                },
+            }
+        });
+    }
+
+    pub fn ei(&mut self, mem: &Memory) {
+        self.fetch(mem);
+        self.interrupts.ime = true;
+    }
+
+    pub fn di(&mut self, mem: &Memory) {
+        self.interrupts.ime = false;
+        self.fetch(mem);
+    }
+
+    pub fn halt(&mut self, mem: &Memory) {
+        step!((),
+        {
+            0: if self.interrupts.get_int() != 0 {
+                self.fetch(mem);
+            }else{
+                return go!(0);
+            },
+            1: if self.interrupts.get_int() != 0 {
                 go!(0);
                 self.fetch(mem);
             },
