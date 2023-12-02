@@ -12,6 +12,7 @@ impl Cpu {
             self.cb_decode(mem);
             return;
         }
+
         match self.ctx.opcode {
             0x00 => self.nop(mem),
             0x20 => self.jr_c(mem, Cond::NZ),
@@ -280,8 +281,8 @@ impl Cpu {
             0x9b => self.res(mem, 3, Reg8::E),
             0xab => self.res(mem, 5, Reg8::E),
             0xbb => self.res(mem, 7, Reg8::E),
-            0x8C => self.res(mem, 1, Reg8::H),
-            0x9C => self.res(mem, 3, Reg8::H),
+            0x8c => self.res(mem, 1, Reg8::H),
+            0x9c => self.res(mem, 3, Reg8::H),
             0xac => self.res(mem, 5, Reg8::H),
             0xbc => self.res(mem, 7, Reg8::H),
             0x8d => self.res(mem, 1, Reg8::L),
@@ -300,7 +301,7 @@ impl Cpu {
         }
     }
 
-    pub fn cb_prefixed(&mut self, mem: &mut Memory) {
+    fn cb_prefixed(&mut self, mem: &mut Memory) {
         if let Some(v) = self.read8(mem, Imm8) {
             self.ctx.opcode = v;
             self.ctx.cb = true;

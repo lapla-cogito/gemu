@@ -1,4 +1,5 @@
 use crate::constants::*;
+use std::iter;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum Mode {
@@ -67,43 +68,43 @@ impl Ppu {
             }
             0xff40 => self.lcdc,
             0xff41 => 0x80 | self.stat | self.mode as u8,
-            0xFF42 => self.scy,
-            0xFF43 => self.scx,
-            0xFF44 => self.ly,
-            0xFF45 => self.lyc,
-            0xFF46 => 0xFF,
-            0xFF47 => self.bgp,
-            0xFF48 => self.obp0,
-            0xFF49 => self.obp1,
-            0xFF4A => self.wy,
-            0xFF4B => self.wx,
+            0xff42 => self.scy,
+            0xff43 => self.scx,
+            0xff44 => self.ly,
+            0xff45 => self.lyc,
+            0xff46 => 0xFF,
+            0xff47 => self.bgp,
+            0xff48 => self.obp0,
+            0xff49 => self.obp1,
+            0xff4a => self.wy,
+            0xff4b => self.wx,
             _ => unreachable!(),
         }
     }
 
     pub fn write(&mut self, addr: u16, data: u8) {
         match addr {
-            0x8000..=0x9FFF => {
+            0x8000..=0x9fff => {
                 if self.mode != Mode::Drawing {
                     self.vram[addr as usize & 0x1fff] = data;
                 }
             }
-            0xFE00..=0xFE9F => {
+            0xfe00..=0xfe9f => {
                 if self.mode != Mode::Drawing && self.mode != Mode::OAMScan {
                     self.oam[addr as usize & 0xff] = data;
                 }
             }
-            0xFF40 => self.lcdc = data,
-            0xFF41 => self.stat = (self.stat & LYC_EQ_LY) | (data & 0xF8),
-            0xFF42 => self.scy = data,
-            0xFF43 => self.scx = data,
-            0xFF44 => {}
-            0xFF45 => self.lyc = data,
-            0xFF47 => self.bgp = data,
-            0xFF48 => self.obp0 = data,
-            0xFF49 => self.obp1 = data,
-            0xFF4A => self.wy = data,
-            0xFF4B => self.wx = data,
+            0xff40 => self.lcdc = data,
+            0xff41 => self.stat = (self.stat & LYC_EQ_LY) | (data & 0xF8),
+            0xff42 => self.scy = data,
+            0xff43 => self.scx = data,
+            0xff44 => {}
+            0xff45 => self.lyc = data,
+            0xff47 => self.bgp = data,
+            0xff48 => self.obp0 = data,
+            0xff49 => self.obp1 = data,
+            0xff4a => self.wy = data,
+            0xff4b => self.wx = data,
             _ => unreachable!(),
         }
     }
@@ -112,9 +113,9 @@ impl Ppu {
         let r = (y * 2) as usize;
         let c = (7 - x) as usize;
         let tile_addr = tile_ind << 4;
-        let row = self.vram[(tile_addr | r) & 0x1fff];
+        let low = self.vram[(tile_addr | r) & 0x1fff];
         let high = self.vram[(tile_addr | (r + 1)) & 0x1fff];
-        (((high >> c) & 1) << 1) | ((row >> c) & 1)
+        (((high >> c) & 1) << 1) | ((low >> c) & 1)
     }
 
     fn get_tile_idx_from_tile_map(&self, tile_map: bool, y: u8, x: u8) -> usize {
@@ -133,6 +134,13 @@ impl Ppu {
         } else {
             self.stat &= !LYC_EQ_LY;
         }
+    }
+
+    pub fn pixel_buffer(&self) -> Box<[u8]> {
+        self.buffer
+            .iter()
+            .flat_map(|&e| iter::repeat(e.into()).take(3))
+            .collect::<Box<[u8]>>()
     }
 
     fn render(&mut self) {
@@ -158,7 +166,7 @@ impl Ppu {
         }
     }
 
-    fn emu(&mut self) -> bool {
+    pub fn emu(&mut self) -> bool {
         // Check if PPU is enabled
         if self.lcdc & PPU_ENABLE == 0 {
             return false;

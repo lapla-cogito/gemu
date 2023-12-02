@@ -12,16 +12,23 @@ struct Ctx {
 }
 
 pub struct Cpu {
-    regs: Registers,
+    pub regs: Registers,
     ctx: Ctx,
 }
 
 impl Cpu {
+    pub fn new() -> Self {
+        Self {
+            regs: Registers::default(),
+            ctx: Ctx::default(),
+        }
+    }
+
     pub fn emu(&mut self, mem: &mut Memory) {
         self.decode(mem);
     }
 
-    pub fn fetch(&mut self, mem: &mut Memory) {
+    pub fn fetch(&mut self, mem: &Memory) {
         let pc = self.regs.pc;
         let opcode = mem.read(pc);
         self.ctx.opcode = opcode;

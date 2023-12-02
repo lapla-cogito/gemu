@@ -4,7 +4,7 @@ pub struct Memory {
     bootrom: Bootrom,
     wram: Wram,
     hram: Hram,
-    ppu: Ppu,
+    pub ppu: Ppu,
 }
 
 impl Memory {
@@ -26,24 +26,24 @@ impl Memory {
                     0xff
                 }
             }
-            0x0c00..=0xfdff => self.wram.read(addr),
-            0xff80..=0xfffe => self.hram.read(addr),
             0x8000..=0x9fff => self.ppu.read(addr),
+            0x0c00..=0xfdff => self.wram.read(addr),
             0xfe00..=0xfe9f => self.ppu.read(addr),
             0xff40..=0xff4b => self.ppu.read(addr),
-            _ => panic!("Invalid read address: {:#06x}", addr),
+            0xff80..=0xfffe => self.hram.read(addr),
+            _ => 0xff,
         }
     }
 
     pub fn write(&mut self, addr: u16, data: u8) {
         match addr {
-            0xc000..=0xfdff => self.wram.write(addr, data),
-            0xff50 => self.bootrom.write(addr, data),
-            0xff80..=0xfffe => self.hram.write(addr, data),
             0x8000..=0x9fff => self.ppu.write(addr, data),
+            0xc000..=0xfdff => self.wram.write(addr, data),
             0xfe00..=0xfe9f => self.ppu.write(addr, data),
             0xff40..=0xff4b => self.ppu.write(addr, data),
-            _ => panic!("Invalid write address: {:#06x}", addr),
+            0xff50 => self.bootrom.write(addr, data),
+            0xff80..=0xfffe => self.hram.write(addr, data),
+            _=>(),
         }
     }
 }

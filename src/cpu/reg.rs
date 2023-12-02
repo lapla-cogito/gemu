@@ -48,12 +48,15 @@ impl Registers {
     pub fn zf(&self) -> bool {
         (self.f & 0b10000000) > 0
     }
+
     pub fn nf(&self) -> bool {
         (self.f & 0b01000000) > 0
     }
+
     pub fn hf(&self) -> bool {
         (self.f & 0b00100000) > 0
     }
+
     pub fn cf(&self) -> bool {
         (self.f & 0b00010000) > 0
     }
@@ -65,6 +68,7 @@ impl Registers {
             self.f &= 0b01111111;
         }
     }
+
     pub fn set_nf(&mut self, val: bool) {
         if val {
             self.f |= 0b01000000;
@@ -72,6 +76,7 @@ impl Registers {
             self.f &= 0b10111111;
         }
     }
+
     pub fn set_hf(&mut self, val: bool) {
         if val {
             self.f |= 0b00100000;
@@ -79,6 +84,7 @@ impl Registers {
             self.f &= 0b11011111;
         }
     }
+
     pub fn set_cf(&mut self, val: bool) {
         if val {
             self.f |= 0b00010000;
