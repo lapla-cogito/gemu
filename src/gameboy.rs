@@ -1,4 +1,4 @@
-use crate::{bootrom::Bootrom, constants::M_CYCLE_NANOS, cpu::Cpu, lcd::Lcd, mem::Memory};
+use crate::{bootrom::Bootrom, constants::M_CYCLE_NANOS, cpu::Cpu, lcd::Lcd, mem::Memory, cartridge::Cartridge};
 use sdl2;
 use std::time;
 
@@ -9,11 +9,11 @@ pub struct Gameboy {
 }
 
 impl Gameboy {
-    pub fn new(bootrom: Bootrom) -> Self {
+    pub fn new(bootrom: Bootrom,cartridge:Cartridge) -> Self {
         let sdl = sdl2::init().expect("failed to init SDL");
         let lcd = Lcd::new(&sdl, 4);
 
-        let mem = Memory::new(bootrom);
+        let mem = Memory::new(bootrom,cartridge);
         let cpu = Cpu::new();
 
         Self { cpu, mem, lcd }

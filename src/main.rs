@@ -1,4 +1,5 @@
 mod bootrom;
+mod cartridge;
 mod constants;
 mod cpu;
 mod gameboy;
@@ -7,6 +8,7 @@ mod lcd;
 mod mem;
 mod ppu;
 mod wram;
+mod mbc;
 
 use std::{env, fs::File, io::Read, process::exit};
 
@@ -27,9 +29,11 @@ fn main() {
         exit(1);
     }
 
-    let cartridge_raw = file2vec(&args[1]);
-    let bootrom = bootrom::Bootrom::new(cartridge_raw.into());
+    let bootrom_raw = file2vec(&args[1]);
+    let cartridge_raw = file2vec(&args[2]);
+    let bootrom = bootrom::Bootrom::new(bootrom_raw.into());
+    let cartridge = cartridge::Cartridge::new(cartridge_raw.into());
 
-    let mut gameboy = gameboy::Gameboy::new(bootrom);
+    let mut gameboy = gameboy::Gameboy::new(bootrom,cartridge);
     gameboy.run();
 }
